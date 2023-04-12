@@ -433,13 +433,15 @@ MonoBehaviour:
   westWall: {fileID: 1561086562}
   floor: {fileID: 36072482}
   cube: {fileID: 1890465415}
-  keepDistance: 4
+  fromColor: 15
+  toColor: 63
+  keepDistance: 2.5
   keepHeight: 1
   fromAngleRadians: 0
-  toAngleRadians: 3.14
-  step: 0.5
-  imageWidth: 256
-  imageHeight: 256
+  toAngleRadians: 0.5
+  step: 0.0075
+  imageWidth: 64
+  imageHeight: 64
 --- !u!1 &1321606234
 GameObject:
   m_ObjectHideFlags: 0

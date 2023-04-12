@@ -19,6 +19,12 @@ public class DatasetGenerator : MonoBehaviour
 	public EnvironmentObject floor; 
 	public EnvironmentObject cube;
 	
+	[Range(0, 63)]
+	public ushort fromColor = 0;
+
+	[Range(0, 63)]
+	public ushort toColor = 63; 
+	
 	[Header("Camera settings")]
 	public float keepDistance;
 	public float keepHeight; 
@@ -59,14 +65,9 @@ public class DatasetGenerator : MonoBehaviour
 
 	Texture2D targetTexture = new Texture2D(imageWidth, imageHeight, TextureFormat.RGB24, false); 
 
-	// There are 64 unique values in 6 bits
-	int maxColor = 63;
-	
-
-	// We have 64 ^ 3 unique configurations per angle
-	for(ushort cubeColor = 0; cubeColor < maxColor; cubeColor++) 
-		for(ushort floorColor = 0; floorColor < maxColor; floorColor++) 
-			for(ushort wallColor = 0; wallColor < maxColor; wallColor++) {
+	for(ushort cubeColor = fromColor; cubeColor < toColor; cubeColor++) 
+		for(ushort floorColor = fromColor; floorColor < toColor; floorColor++) 
+			for(ushort wallColor = fromColor; wallColor < toColor; wallColor++) {
 				cube.setColor(cubeColor); 
 				floor.setColor(floorColor); 
 
