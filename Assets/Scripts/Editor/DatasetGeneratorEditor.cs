@@ -16,5 +16,9 @@ public class DatasetGeneratorEditor : Editor
 			datasetGenerator.generateDataset();
 		}
 
+		if(GUILayout.Button("Generate angles list file")) {
+			datasetGenerator.generateAngleFile();
+		}
+
 	}
 }

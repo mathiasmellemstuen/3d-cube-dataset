@@ -4,6 +4,12 @@ using UnityEngine;
 
 public class HexHelpers
 {
+	public enum BitType {
+		BIT_9,
+		BIT_6,
+		BIT_32
+	}
+
 	public static Color32 ToColor9BitColor(ushort hexValue) {
 
 		byte red = (byte)((hexValue >> 6) & 0x07);
@@ -30,5 +36,14 @@ public class HexHelpers
 		blue = (byte)((blue * 255) / 0x3); 
 
 		return new Color32(red, green, blue, 255); 
+	}
+
+	public static Color32 ToColor32BitColor(uint hexValue) {
+		byte red = (byte)((hexValue >> 16) & 0xFF);
+		byte blue = (byte)((hexValue) & 0xFF);
+		byte green = (byte)((hexValue >> 8) & 0xFF);
+		byte alpha = (byte)((hexValue >> 24) & 0xFF);
+
+		return new Color32(red, blue, green, 255); 
 	}
 }
