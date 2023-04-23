@@ -5,12 +5,20 @@ using System;
 using System.IO; 
 using Moments.Encoder; 
 
+public enum FileType {
+	GIF,
+	PNG
+}
+
 public class DatasetGenerator : MonoBehaviour
 {
 	
 	[Header("Demo")]
 	public bool demo = false;
 	public float rotationSpeed = 0.2f; 
+	
+	[Header("Generation settings")]
+	public FileType fileType; 
 
 	[Header("Environment")]
 	public EnvironmentObject northWall;
@@ -74,7 +82,45 @@ public class DatasetGenerator : MonoBehaviour
 
 		File.WriteAllText("dataset/angles.txt", content); 
 	}
+	
+	public void generateAllPNG(uint cubeColor, uint floorColor, uint wallColor, HexHelpers.BitType bitType, RenderTexture renderTexture, Texture2D targetTexture) {
+		
+		cube.setColor(cubeColor, bitType); 
+		floor.setColor(floorColor, bitType); 
 
+		// The same value is set for all the walls
+		northWall.setColor(wallColor, bitType); 
+		southWall.setColor(wallColor, bitType); 
+		westWall.setColor(wallColor, bitType); 
+		eastWall.setColor(wallColor, bitType); 
+
+		string folderPath = $"dataset/{cubeColor}_{floorColor}_{wallColor}/";
+		System.IO.Directory.CreateDirectory(folderPath); 
+
+		currentCameraAngleRadians = 0.0f;
+		int index = 0; 
+		// Then we loop over every position to place the camera in
+		while(currentCameraAngleRadians < toAngleRadians) {
+			
+			// Updating the position and orientation of the camera
+			transform.position = calculateCameraPosition(cube.transform.position, currentCameraAngleRadians); 
+			transform.LookAt(new Vector3(cube.transform.position.x, keepHeight, cube.transform.position.z)); 
+			
+			// Rendering the image with the camera
+			currentCamera.Render();
+
+			// Copying the rendered image from the GPU
+			RenderTexture.active = renderTexture;
+			targetTexture.ReadPixels(new Rect(0, 0, imageWidth, imageHeight), 0, 0); 
+
+			// Saving the current frame to disk
+			byte[] imageBytes = targetTexture.EncodeToPNG();
+			File.WriteAllBytes($"{folderPath}/{index}.png", imageBytes); 
+
+			currentCameraAngleRadians += step; 
+			index += 1; 
+		}
+	}
 	public void generateAllGIF(uint cubeColor, uint floorColor, uint wallColor, HexHelpers.BitType bitType, RenderTexture renderTexture, Texture2D targetTexture) { 
 
 		cube.setColor(cubeColor, bitType); 
@@ -132,32 +178,41 @@ public class DatasetGenerator : MonoBehaviour
 	
 	// Setting the seed
 	UnityEngine.Random.InitState(seed); 
+	
+	Texture2D targetTexture = new Texture2D(imageWidth, imageHeight, TextureFormat.RGB24, false); 
+	RenderTexture renderTexture = new RenderTexture(imageWidth, imageHeight, 0); 
 
 	currentCamera = GetComponent<Camera>();
 
 	// Setting the camera width and height in pixels
 	currentCamera.pixelRect = new Rect(0, 0, imageWidth, imageHeight); 
 
-	// Setting the target texture of the camera
-	RenderTexture renderTexture = new RenderTexture(imageWidth, imageHeight, 0); 
 	currentCamera.targetTexture = renderTexture; 
-
-	Texture2D targetTexture = new Texture2D(imageWidth, imageHeight, TextureFormat.RGB24, false); 
 	
 	if(useRandomColors) {
 		for(int i = 0; i < amountOfRandomColors; i++) {
 			uint randomCubeColor = (uint)UnityEngine.Random.Range(0, 4294967295); 
 			uint randomFloorColor = (uint)UnityEngine.Random.Range(0, 4294967295); 
 			uint randomWallColor = (uint)UnityEngine.Random.Range(0, 4294967295); 
-	
-			generateAllGIF(randomCubeColor, randomFloorColor, randomWallColor, HexHelpers.BitType.BIT_32, renderTexture, targetTexture); 
+			
+			if(fileType == FileType.GIF) {
+				generateAllGIF(randomCubeColor, randomFloorColor, randomWallColor, HexHelpers.BitType.BIT_32, renderTexture, targetTexture); 
+			} else {
+
+				generateAllPNG(randomCubeColor, randomFloorColor, randomWallColor, HexHelpers.BitType.BIT_32, renderTexture, targetTexture); 
+			}
 		}
 		return; 
 	} 
 	for(ushort cubeColor = fromColor; cubeColor < toColor; cubeColor++) 
 		for(ushort floorColor = fromColor; floorColor < toColor; floorColor++) 
 			for(ushort wallColor = fromColor; wallColor < toColor; wallColor++) {
-				generateAllGIF(cubeColor, floorColor, wallColor, HexHelpers.BitType.BIT_9, renderTexture, targetTexture); 
+
+				if(fileType == FileType.GIF) {
+					generateAllGIF(cubeColor, floorColor, wallColor, HexHelpers.BitType.BIT_9, renderTexture, targetTexture); 
+				} else {
+					generateAllPNG(cubeColor, floorColor, wallColor, HexHelpers.BitType.BIT_9, renderTexture, targetTexture); 
+				}
 			}
 	}
 
