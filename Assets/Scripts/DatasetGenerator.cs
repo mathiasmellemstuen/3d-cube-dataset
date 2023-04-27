@@ -39,6 +39,9 @@ public class DatasetGenerator : MonoBehaviour
 	public int seed = 321789; 
 	public int amountOfRandomColors = 100; 
 	
+	[Header("Masks")]
+	public bool onlyGenerateMasks = false; 
+
 	[Header("Camera settings")]
 	public float keepDistance;
 	public float keepHeight; 
@@ -52,12 +55,18 @@ public class DatasetGenerator : MonoBehaviour
 	private RenderTexture renderTexture; 
 
 	private Camera currentCamera; 
+	private Camera floorCamera; 
+	private Camera wallCamera;
+	private Camera cubeCamera; 
 	private float currentCameraAngleRadians = 0.0f; 
 	
 	private GifEncoder gifEncoder;
 
 	private void Start() {
 		currentCamera = GetComponent<Camera>();
+		floorCamera = GameObject.Find("FloorCamera").GetComponent<Camera>();
+		wallCamera = GameObject.Find("WallCamera").GetComponent<Camera>();
+		cubeCamera = GameObject.Find("CubeCamera").GetComponent<Camera>();
 	}
 	
 	private Vector3 calculateCameraPosition(Vector3 cubePosition, float inputAngle) {
@@ -82,7 +91,101 @@ public class DatasetGenerator : MonoBehaviour
 
 		File.WriteAllText("dataset/angles.txt", content); 
 	}
-	
+
+	public void generateAllMasksPNG(uint cubeColor, uint floorColor, uint wallColor, HexHelpers.BitType bitType, RenderTexture renderTexture, Texture2D targetTexture) {
+
+		cube.setColor(cubeColor, bitType); 
+		floor.setColor(floorColor, bitType); 
+
+		// The same value is set for all the walls
+		northWall.setColor(wallColor, bitType); 
+		southWall.setColor(wallColor, bitType); 
+		westWall.setColor(wallColor, bitType); 
+		eastWall.setColor(wallColor, bitType); 
+
+		string folderPath = $"dataset/{cubeColor}_{floorColor}_{wallColor}/";
+		System.IO.Directory.CreateDirectory(folderPath); 
+
+		currentCameraAngleRadians = 0.0f;
+		int index = 0; 
+		// Then we loop over every position to place the camera in
+		while(currentCameraAngleRadians < toAngleRadians) {
+			
+			// Updating the position and orientation of the camera
+			transform.position = calculateCameraPosition(cube.transform.position, currentCameraAngleRadians); 
+			transform.LookAt(new Vector3(cube.transform.position.x, keepHeight, cube.transform.position.z));
+			floorCamera.transform.position = transform.position; 
+			floorCamera.transform.rotation = transform.rotation;
+			cubeCamera.transform.position = transform.position; 
+			cubeCamera.transform.rotation = transform.rotation;
+			wallCamera.transform.position = transform.position; 
+			wallCamera.transform.rotation = transform.rotation;
+			
+			// Rendering the image with the camera
+			currentCamera.targetTexture = renderTexture; 
+			currentCamera.Render();
+
+			// Copying the rendered image from the GPU
+			RenderTexture.active = renderTexture;
+			targetTexture.ReadPixels(new Rect(0, 0, imageWidth, imageHeight), 0, 0); 
+
+			// Saving the current frame to disk
+			byte[] imageBytesCurrent = targetTexture.EncodeToPNG();
+			File.WriteAllBytes($"{folderPath}/{index}.png", imageBytesCurrent);
+
+			floorCamera.targetTexture = renderTexture; 
+			floorCamera.Render();
+			
+			// Copying the rendered image from the GPU
+			RenderTexture.active = renderTexture;
+			targetTexture.ReadPixels(new Rect(0, 0, imageWidth, imageHeight), 0, 0); 
+			targetTexture = makeTextureBinary(targetTexture); 
+
+			// Saving the current frame to disk
+			byte[] imageBytesFloor = targetTexture.EncodeToPNG();
+			File.WriteAllBytes($"{folderPath}/{index}_floor_mask.png", imageBytesFloor);
+
+			cubeCamera.targetTexture = renderTexture; 
+			cubeCamera.Render();
+			
+			// Copying the rendered image from the GPU
+			RenderTexture.active = renderTexture;
+			targetTexture.ReadPixels(new Rect(0, 0, imageWidth, imageHeight), 0, 0); 
+			targetTexture = makeTextureBinary(targetTexture); 
+
+
+			// Saving the current frame to disk
+			byte[] imageBytesCube = targetTexture.EncodeToPNG();
+			File.WriteAllBytes($"{folderPath}/{index}_cube_mask.png", imageBytesCube);
+
+			wallCamera.targetTexture = renderTexture; 
+			wallCamera.Render();
+			
+				// Copying the rendered image from the GPU
+			RenderTexture.active = renderTexture;
+			targetTexture.ReadPixels(new Rect(0, 0, imageWidth, imageHeight), 0, 0); 
+			targetTexture = makeTextureBinary(targetTexture); 
+
+			// Saving the current frame to disk
+			byte[] imageBytesWall = targetTexture.EncodeToPNG();
+			File.WriteAllBytes($"{folderPath}/{index}_wall_mask.png", imageBytesWall);
+
+			currentCameraAngleRadians += step;
+			index += 1; 
+		}
+	}
+	Texture2D makeTextureBinary(Texture2D inTexture) {
+		for(int y = 0; y < inTexture.height; y++) {
+			for(int x = 0; x < inTexture.width; x++) {
+				
+				Color color = (inTexture.GetPixel(x, y) != Color.black ? Color.white : Color.black); 
+
+				inTexture.SetPixel(x, y, color); 
+			}
+		}
+
+		return inTexture; 
+	}
 	public void generateAllPNG(uint cubeColor, uint floorColor, uint wallColor, HexHelpers.BitType bitType, RenderTexture renderTexture, Texture2D targetTexture) {
 		
 		cube.setColor(cubeColor, bitType); 
@@ -104,7 +207,7 @@ public class DatasetGenerator : MonoBehaviour
 			
 			// Updating the position and orientation of the camera
 			transform.position = calculateCameraPosition(cube.transform.position, currentCameraAngleRadians); 
-			transform.LookAt(new Vector3(cube.transform.position.x, keepHeight, cube.transform.position.z)); 
+			transform.LookAt(new Vector3(cube.transform.position.x, keepHeight, cube.transform.position.z));
 			
 			// Rendering the image with the camera
 			currentCamera.Render();
@@ -173,7 +276,7 @@ public class DatasetGenerator : MonoBehaviour
 		// Finializing the GIF
 		gifEncoder.Finish();
 	}
-
+	
 	public void generateDataset() {
 	
 	// Setting the seed
@@ -183,12 +286,24 @@ public class DatasetGenerator : MonoBehaviour
 	RenderTexture renderTexture = new RenderTexture(imageWidth, imageHeight, 0); 
 
 	currentCamera = GetComponent<Camera>();
+	floorCamera = GameObject.Find("FloorCamera").GetComponent<Camera>();
+	wallCamera = GameObject.Find("WallCamera").GetComponent<Camera>();
+	cubeCamera = GameObject.Find("CubeCamera").GetComponent<Camera>();
 
 	// Setting the camera width and height in pixels
 	currentCamera.pixelRect = new Rect(0, 0, imageWidth, imageHeight); 
 
 	currentCamera.targetTexture = renderTexture; 
 	
+	if(onlyGenerateMasks) {
+		
+		uint randomCubeColor = (uint)UnityEngine.Random.Range(0, 4294967295); 
+		uint randomFloorColor = (uint)UnityEngine.Random.Range(0, 4294967295); 
+		uint randomWallColor = (uint)UnityEngine.Random.Range(0, 4294967295); 
+
+		generateAllMasksPNG(randomCubeColor, randomFloorColor, randomWallColor, HexHelpers.BitType.BIT_32, renderTexture, targetTexture); 
+		return; 
+	}
 	if(useRandomColors) {
 		for(int i = 0; i < amountOfRandomColors; i++) {
 			uint randomCubeColor = (uint)UnityEngine.Random.Range(0, 4294967295); 
