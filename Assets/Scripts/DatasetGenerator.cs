@@ -131,6 +131,11 @@ public class DatasetGenerator : MonoBehaviour
 			string folderPath = $"dataset/colors/{cubeColorStr}_{floorColorStr}_{wallColorStr}/";
 			System.IO.Directory.CreateDirectory(folderPath); 
 			
+			currentCamera.pixelRect = new Rect(0, 0, imageWidth, imageHeight); 
+			floorCamera.pixelRect = new Rect(0, 0, imageWidth, imageHeight); 
+			cubeCamera.pixelRect = new Rect(0, 0, imageWidth, imageHeight); 
+			wallCamera.pixelRect = new Rect(0, 0, imageWidth, imageHeight); 
+
 			currentCameraAngleRadians = 0.0f;
 			int index = 0;
 
@@ -141,12 +146,12 @@ public class DatasetGenerator : MonoBehaviour
 				transform.position = calculateCameraPosition(cube.transform.position, currentCameraAngleRadians); 
 				transform.LookAt(new Vector3(cube.transform.position.x, keepHeight, cube.transform.position.z));
 
-				floorCamera.transform.position = transform.position; 
-				floorCamera.transform.rotation = transform.rotation;
-				cubeCamera.transform.position = transform.position; 
-				cubeCamera.transform.rotation = transform.rotation;
-				wallCamera.transform.position = transform.position; 
-				wallCamera.transform.rotation = transform.rotation;
+				//floorCamera.transform.position = transform.position; 
+				//floorCamera.transform.rotation = transform.rotation;
+				//cubeCamera.transform.position = transform.position; 
+				//cubeCamera.transform.rotation = transform.rotation;
+				//wallCamera.transform.position = transform.position; 
+				//wallCamera.transform.rotation = transform.rotation;
 				
 				// Rendering the image with the camera
 				currentCamera.targetTexture = renderTexture; 
