@@ -24,4 +24,7 @@ public class EnvironmentObject : MonoBehaviour {
 				break; 
 		}
 	}
+	public void setColor(Color color) {
+		meshRenderer.material.color = color; 
+	}
 }

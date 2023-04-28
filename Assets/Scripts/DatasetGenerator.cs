@@ -42,6 +42,12 @@ public class DatasetGenerator : MonoBehaviour
 	[Header("Masks")]
 	public bool onlyGenerateMasks = false; 
 
+	public float minimumSaturation = 0.0f; 
+	public float maximumSaturation = 1.0f; 
+
+	public float minimumValue = 0.0f; 
+	public float maximumValue = 1.0f; 
+
 	[Header("Camera settings")]
 	public float keepDistance;
 	public float keepHeight; 
@@ -91,87 +97,118 @@ public class DatasetGenerator : MonoBehaviour
 
 		File.WriteAllText("dataset/angles.txt", content); 
 	}
+	
+	public Color generateRandomColorHSV() {
+		return UnityEngine.Random.ColorHSV(1.0f, 1.0f, minimumSaturation, maximumSaturation, minimumValue, maximumValue); 
+	}
+	public void generateAllMasksPNG(int amountOfColorValues, RenderTexture renderTexture, Texture2D targetTexture) {
 
-	public void generateAllMasksPNG(uint cubeColor, uint floorColor, uint wallColor, HexHelpers.BitType bitType, RenderTexture renderTexture, Texture2D targetTexture) {
+		string floorMaskPath = $"dataset/masks/floor/";
+		System.IO.Directory.CreateDirectory(floorMaskPath); 
 
-		cube.setColor(cubeColor, bitType); 
-		floor.setColor(floorColor, bitType); 
+		string wallMaskPath = $"dataset/masks/wall/";
+		System.IO.Directory.CreateDirectory(wallMaskPath); 
 
-		// The same value is set for all the walls
-		northWall.setColor(wallColor, bitType); 
-		southWall.setColor(wallColor, bitType); 
-		westWall.setColor(wallColor, bitType); 
-		eastWall.setColor(wallColor, bitType); 
+		string cubeMaskPath = $"dataset/masks/cube/";
+		System.IO.Directory.CreateDirectory(cubeMaskPath); 
 
-		string folderPath = $"dataset/{cubeColor}_{floorColor}_{wallColor}/";
-		System.IO.Directory.CreateDirectory(folderPath); 
+		for(int i = 0; i < amountOfColorValues; i++) {
 
-		currentCameraAngleRadians = 0.0f;
-		int index = 0; 
-		// Then we loop over every position to place the camera in
-		while(currentCameraAngleRadians < toAngleRadians) {
+			Color floorColor = generateRandomColorHSV(); 
+			Color cubeColor = generateRandomColorHSV(); 
+			Color wallColor = generateRandomColorHSV(); 
+			cube.setColor(cubeColor); 
+			floor.setColor(floorColor); 
+			northWall.setColor(wallColor); 
+			southWall.setColor(wallColor); 
+			westWall.setColor(wallColor); 
+			eastWall.setColor(wallColor); 
 			
-			// Updating the position and orientation of the camera
-			transform.position = calculateCameraPosition(cube.transform.position, currentCameraAngleRadians); 
-			transform.LookAt(new Vector3(cube.transform.position.x, keepHeight, cube.transform.position.z));
-			floorCamera.transform.position = transform.position; 
-			floorCamera.transform.rotation = transform.rotation;
-			cubeCamera.transform.position = transform.position; 
-			cubeCamera.transform.rotation = transform.rotation;
-			wallCamera.transform.position = transform.position; 
-			wallCamera.transform.rotation = transform.rotation;
+			string cubeColorStr = UnityEngine.ColorUtility.ToHtmlStringRGB(cubeColor);
+			string floorColorStr = UnityEngine.ColorUtility.ToHtmlStringRGB(floorColor);
+			string wallColorStr = UnityEngine.ColorUtility.ToHtmlStringRGB(wallColor);
+
+			string folderPath = $"dataset/colors/{cubeColorStr}_{floorColorStr}_{wallColorStr}/";
+			System.IO.Directory.CreateDirectory(folderPath); 
 			
-			// Rendering the image with the camera
-			currentCamera.targetTexture = renderTexture; 
-			currentCamera.Render();
+			currentCameraAngleRadians = 0.0f;
+			int index = 0;
 
-			// Copying the rendered image from the GPU
-			RenderTexture.active = renderTexture;
-			targetTexture.ReadPixels(new Rect(0, 0, imageWidth, imageHeight), 0, 0); 
+			// Then we loop over every position to place the camera in
+			while(currentCameraAngleRadians < toAngleRadians) {
+				
+				// Updating the position and orientation of the camera
+				transform.position = calculateCameraPosition(cube.transform.position, currentCameraAngleRadians); 
+				transform.LookAt(new Vector3(cube.transform.position.x, keepHeight, cube.transform.position.z));
 
-			// Saving the current frame to disk
-			byte[] imageBytesCurrent = targetTexture.EncodeToPNG();
-			File.WriteAllBytes($"{folderPath}/{index}.png", imageBytesCurrent);
+				floorCamera.transform.position = transform.position; 
+				floorCamera.transform.rotation = transform.rotation;
+				cubeCamera.transform.position = transform.position; 
+				cubeCamera.transform.rotation = transform.rotation;
+				wallCamera.transform.position = transform.position; 
+				wallCamera.transform.rotation = transform.rotation;
+				
+				// Rendering the image with the camera
+				currentCamera.targetTexture = renderTexture; 
+				currentCamera.Render();
 
-			floorCamera.targetTexture = renderTexture; 
-			floorCamera.Render();
-			
-			// Copying the rendered image from the GPU
-			RenderTexture.active = renderTexture;
-			targetTexture.ReadPixels(new Rect(0, 0, imageWidth, imageHeight), 0, 0); 
-			targetTexture = makeTextureBinary(targetTexture); 
-
-			// Saving the current frame to disk
-			byte[] imageBytesFloor = targetTexture.EncodeToPNG();
-			File.WriteAllBytes($"{folderPath}/{index}_floor_mask.png", imageBytesFloor);
-
-			cubeCamera.targetTexture = renderTexture; 
-			cubeCamera.Render();
-			
-			// Copying the rendered image from the GPU
-			RenderTexture.active = renderTexture;
-			targetTexture.ReadPixels(new Rect(0, 0, imageWidth, imageHeight), 0, 0); 
-			targetTexture = makeTextureBinary(targetTexture); 
-
-
-			// Saving the current frame to disk
-			byte[] imageBytesCube = targetTexture.EncodeToPNG();
-			File.WriteAllBytes($"{folderPath}/{index}_cube_mask.png", imageBytesCube);
-
-			wallCamera.targetTexture = renderTexture; 
-			wallCamera.Render();
-			
 				// Copying the rendered image from the GPU
-			RenderTexture.active = renderTexture;
-			targetTexture.ReadPixels(new Rect(0, 0, imageWidth, imageHeight), 0, 0); 
-			targetTexture = makeTextureBinary(targetTexture); 
+				RenderTexture.active = renderTexture;
+				targetTexture.ReadPixels(new Rect(0, 0, imageWidth, imageHeight), 0, 0); 
+				
 
-			// Saving the current frame to disk
-			byte[] imageBytesWall = targetTexture.EncodeToPNG();
-			File.WriteAllBytes($"{folderPath}/{index}_wall_mask.png", imageBytesWall);
+				// Saving the current frame to disk
+				byte[] imageBytesCurrent = targetTexture.EncodeToPNG();
+				File.WriteAllBytes($"{folderPath}/{index}.png", imageBytesCurrent);
 
-			currentCameraAngleRadians += step;
-			index += 1; 
+
+				// We do not need to generate the masks multiple times since they are essentially the same, stopping here after the first iteration
+				if(i > 0) {
+					currentCameraAngleRadians += step;
+					index += 1; 
+					continue; 
+				}
+
+				floorCamera.targetTexture = renderTexture; 
+				floorCamera.Render();
+				
+				// Copying the rendered image from the GPU
+				RenderTexture.active = renderTexture;
+				targetTexture.ReadPixels(new Rect(0, 0, imageWidth, imageHeight), 0, 0); 
+				targetTexture = makeTextureBinary(targetTexture); 
+
+				// Saving the current frame to disk
+				byte[] imageBytesFloor = targetTexture.EncodeToPNG();
+				File.WriteAllBytes($"{floorMaskPath}/{index}.png", imageBytesFloor);
+
+				cubeCamera.targetTexture = renderTexture; 
+				cubeCamera.Render();
+				
+				// Copying the rendered image from the GPU
+				RenderTexture.active = renderTexture;
+				targetTexture.ReadPixels(new Rect(0, 0, imageWidth, imageHeight), 0, 0); 
+				targetTexture = makeTextureBinary(targetTexture); 
+
+
+				// Saving the current frame to disk
+				byte[] imageBytesCube = targetTexture.EncodeToPNG();
+				File.WriteAllBytes($"{cubeMaskPath}/{index}.png", imageBytesCube);
+
+				wallCamera.targetTexture = renderTexture; 
+				wallCamera.Render();
+				
+					// Copying the rendered image from the GPU
+				RenderTexture.active = renderTexture;
+				targetTexture.ReadPixels(new Rect(0, 0, imageWidth, imageHeight), 0, 0); 
+				targetTexture = makeTextureBinary(targetTexture); 
+
+				// Saving the current frame to disk
+				byte[] imageBytesWall = targetTexture.EncodeToPNG();
+				File.WriteAllBytes($"{wallMaskPath}/{index}.png", imageBytesWall);
+
+				currentCameraAngleRadians += step;
+				index += 1; 
+			}
 		}
 	}
 	Texture2D makeTextureBinary(Texture2D inTexture) {
@@ -301,7 +338,7 @@ public class DatasetGenerator : MonoBehaviour
 		uint randomFloorColor = (uint)UnityEngine.Random.Range(0, 4294967295); 
 		uint randomWallColor = (uint)UnityEngine.Random.Range(0, 4294967295); 
 
-		generateAllMasksPNG(randomCubeColor, randomFloorColor, randomWallColor, HexHelpers.BitType.BIT_32, renderTexture, targetTexture); 
+		generateAllMasksPNG(amountOfRandomColors, renderTexture, targetTexture); 
 		return; 
 	}
 	if(useRandomColors) {
